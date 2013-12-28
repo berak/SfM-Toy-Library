@@ -31,6 +31,8 @@
 #include "RichFeatureMatcher.h"
 #include "OFFeatureMatcher.h"
 #include "GPUSURFFeatureMatcher.h"
+#include "assert.h"
+#include "opencv2/core/utility.hpp"
 
 void MultiCameraDistance::setImages(const std::vector<cv::Mat>& imgs_,
 		const std::vector<std::string>& imgs_names_,
@@ -45,14 +47,14 @@ void MultiCameraDistance::setImages(const std::vector<cv::Mat>& imgs_,
 	imgs_names.clear();
 	Pmats.clear();
 
-	std::cout << "=========================== Load Images ===========================\n";
+	std::cout  <<"=========================== Load Images ===========================\n";
 	imgs_names = imgs_names_;
 	//ensure images are CV_8UC3
 	for (unsigned int i = 0; i < imgs_.size(); i++) {
 		imgs_orig.push_back(cv::Mat_<cv::Vec3b>());
 		if (!imgs_[i].empty()) {
 			if (imgs_[i].type() == CV_8UC1) {
-				cvtColor(imgs_[i], imgs_orig[i], CV_GRAY2BGR);
+                cvtColor(imgs_[i], imgs_orig[i], cv::COLOR_GRAY2BGR);
 			} else if (imgs_[i].type() == CV_32FC3 || imgs_[i].type()
 					== CV_64FC3) {
 				imgs_[i].convertTo(imgs_orig[i], CV_8UC3, 255.0);
@@ -62,13 +64,13 @@ void MultiCameraDistance::setImages(const std::vector<cv::Mat>& imgs_,
 		}
 
 		imgs.push_back(cv::Mat());
-		cvtColor(imgs_orig[i], imgs[i], CV_BGR2GRAY);
+        cvtColor(imgs_orig[i], imgs[i], cv::COLOR_BGR2GRAY);
 
 		imgpts.push_back(std::vector<cv::KeyPoint>());
 		imgpts_good.push_back(std::vector<cv::KeyPoint>());
-		std::cout << imgs_names[i] << std::endl;
+		std::cout  <<imgs_names[i] << std::endl;
 	}
-	std::cout << std::endl;
+	std::cout  <<std::endl;
 
 	init(imgs_path_);
 }
@@ -101,19 +103,19 @@ void MultiCameraDistance::OnlyMatchFeatures()
 {
 	if(features_matched) return;
 
-	std::cout << "Matching features...\n";
+	std::cout  <<"Matching features...\n";
 	
 	if (use_rich_features) {
 		if (use_gpu) {
-			std::cout << "Using GPU\n";
-			feature_matcher = new GPUSURFFeatureMatcher(imgs,imgpts);
+			std::cout  <<"Using GPU\n";
+//			feature_matcher = cv::makePtr<GPUSURFFeatureMatcher>(imgs,imgpts);
 		} else {
-			std::cout << "Using CPU\n";
-			feature_matcher = new RichFeatureMatcher(imgs,imgpts);
+			std::cout  <<"Using CPU\n";
+            feature_matcher = cv::Ptr<RichFeatureMatcher>(new RichFeatureMatcher(imgs,imgpts));
 		}
 	} else {
-		std::cout << "Using Optical Flow\n";
-		feature_matcher = new OFFeatureMatcher(use_gpu,imgs,imgpts);
+		std::cout  <<"Using Optical Flow\n";
+        feature_matcher = cv::Ptr<OFFeatureMatcher>(new OFFeatureMatcher(use_gpu,imgs,imgpts));
 	}	
 
 	int loop1_top = imgs.size() - 1, loop2_top = imgs.size();
@@ -125,7 +127,7 @@ void MultiCameraDistance::OnlyMatchFeatures()
 	//		for (int frame_num_j = frame_num_i + 1; frame_num_j < loop2_top; frame_num_j++)
 	//		{
 	//			std::vector<cv::KeyPoint> fp,fp1;
-	//			std::cout << "------------ Match " << imgs_names[frame_num_i] << ","<<imgs_names[frame_num_j]<<" ------------\n";
+	//			std::cout  <<"------------ Match " << imgs_names[frame_num_i] << ","<<imgs_names[frame_num_j]<<" ------------\n";
 	//			std::vector<cv::DMatch> matches_tmp;
 	//			feature_matcher->MatchFeatures(frame_num_i,frame_num_j,&matches_tmp);
 	//			
@@ -136,21 +138,35 @@ void MultiCameraDistance::OnlyMatchFeatures()
 	//		}
 	//	}
 	//} else {
+    cv::FileStorage fs("matches.yml",cv::FileStorage::READ);
+    bool doRead = fs.isOpened();
+    if ( ! doRead )
+    {
+        fs = cv::FileStorage("matches.yml",cv::FileStorage::WRITE);
+    }
 #pragma omp parallel for
 		for (frame_num_i = 0; frame_num_i < loop1_top; frame_num_i++) {
 			for (int frame_num_j = frame_num_i + 1; frame_num_j < loop2_top; frame_num_j++)
 			{
-				std::cout << "------------ Match " << imgs_names[frame_num_i] << ","<<imgs_names[frame_num_j]<<" ------------\n";
+				std::cout  <<"------------ Match " << imgs_names[frame_num_i] << ","<<imgs_names[frame_num_j]<<" ------------\n";
 				std::vector<cv::DMatch> matches_tmp;
-				feature_matcher->MatchFeatures(frame_num_i,frame_num_j,&matches_tmp);
+                std::string kn = cv::format("match_%02d_%02d",frame_num_i,frame_num_j);
+                if ( doRead ) 
+                {
+                    fs[kn] >> matches_tmp;  
+                } 
+                else 
+                {
+				    feature_matcher->MatchFeatures(frame_num_i,frame_num_j,&matches_tmp);
+                    fs << kn << matches_tmp;
+                }
 				matches_matrix[std::make_pair(frame_num_i,frame_num_j)] = matches_tmp;
-
 				std::vector<cv::DMatch> matches_tmp_flip = FlipMatches(matches_tmp);
 				matches_matrix[std::make_pair(frame_num_j,frame_num_i)] = matches_tmp_flip;
 			}
 		}
 	//}
-
+    fs.release();
 	features_matched = true;
 }
 

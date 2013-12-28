@@ -32,7 +32,9 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <string>
 #include <vector>
+#include <map>
 #include <iostream>
 #include <list>
 #include <set>
@@ -59,7 +61,7 @@ void drawArrows(cv::Mat& frame, const std::vector<cv::Point2f>& prevPts, const s
 
 #ifdef USE_PROFILING
 #define CV_PROFILE(msg,code)	{\
-	std::cout << msg << " ";\
+	std::cout << __FUNC__ << msg << " ";\
 	double __time_in_ticks = (double)cv::getTickCount();\
 	{ code }\
 	std::cout << "DONE " << ((double)cv::getTickCount() - __time_in_ticks)/cv::getTickFrequency() << "s" << std::endl;\
@@ -67,6 +69,9 @@ void drawArrows(cv::Mat& frame, const std::vector<cv::Point2f>& prevPts, const s
 #else
 #define CV_PROFILE(msg,code) code
 #endif
+
+bool hasEnding (std::string const &fullString, std::string const &ending);
+bool hasEndingLower (std::string const &fullString_, std::string const &_ending);
 
 void open_imgs_dir(const char* dir_name, std::vector<cv::Mat>& images, std::vector<std::string>& images_names, double downscale_factor);
 void imshow_250x250(const std::string& name_, const cv::Mat& patch);

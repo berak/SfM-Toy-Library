@@ -40,3 +40,5 @@ public:
 private:
 	int Count2DMeasurements(const std::vector<CloudPoint>& pointcloud);
 };
+
+extern int doSSBA;

@@ -28,7 +28,8 @@
  */
 #pragma once
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <vector>
 
 #include "Common.h"
@@ -67,7 +68,7 @@ public:
 	const cv::Mat& getleft_im_orig() { return left_im_orig; }
 	const cv::Mat& getright_im_orig() { return right_im_orig; }
 	const std::vector<cv::KeyPoint>& getcorrespImg1Pt() { return correspImg1Pt; }
-	const std::vector<cv::Vec3b>& getPointCloudRGB() { return std::vector<cv::Vec3b>();}
+	const std::vector<cv::Vec3b> & getPointCloudRGB() { return std::vector<cv::Vec3b>();}
 		//c'tor
 	Distance(const cv::Mat& left_im_, const cv::Mat& right_im_):
 		features_matched(false)
@@ -75,9 +76,9 @@ public:
 		left_im_.copyTo(left_im);
 		right_im_.copyTo(right_im);
 		left_im.copyTo(left_im_orig);
-		cvtColor(left_im_orig, left_im, CV_BGR2GRAY);
+        cvtColor(left_im_orig, left_im, cv::COLOR_BGR2GRAY);
 		right_im.copyTo(right_im_orig);
-		cvtColor(right_im_orig, right_im, CV_BGR2GRAY);
+		cvtColor(right_im_orig, right_im, cv::COLOR_BGR2GRAY);
 		
 		P = cv::Matx34d(1,0,0,0,
 						0,1,0,0,

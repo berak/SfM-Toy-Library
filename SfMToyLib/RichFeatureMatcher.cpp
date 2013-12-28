@@ -51,7 +51,7 @@ RichFeatureMatcher::RichFeatureMatcher(std::vector<cv::Mat>& imgs_,
 	detector = FeatureDetector::create("PyramidFAST");
 	extractor = DescriptorExtractor::create("ORB");
 	
-	std::cout << " -------------------- extract feature points for all images -------------------\n";
+	std::cout  << " -------------------- extract feature points for all images -------------------\n";
 	
 	detector->detect(imgs, imgpts);
 	extractor->compute(imgs, imgpts, descriptors);
@@ -71,8 +71,8 @@ void RichFeatureMatcher::MatchFeatures(int idx_i, int idx_j, vector<DMatch>* mat
 	std::vector< DMatch > good_matches_,very_good_matches_;
 	std::vector<KeyPoint> keypoints_1, keypoints_2;
 	
-	cout << "imgpts1 has " << imgpts1.size() << " points (descriptors " << descriptors_1.rows << ")" << endl;
-	cout << "imgpts2 has " << imgpts2.size() << " points (descriptors " << descriptors_2.rows << ")" << endl;
+	cout  << "imgpts1 has " << imgpts1.size() << " points (descriptors " << descriptors_1.rows << ")" << endl;
+	cout  << "imgpts2 has " << imgpts2.size() << " points (descriptors " << descriptors_2.rows << ")" << endl;
 	
 	keypoints_1 = imgpts1;
 	keypoints_2 = imgpts2;
@@ -93,18 +93,38 @@ void RichFeatureMatcher::MatchFeatures(int idx_i, int idx_j, vector<DMatch>* mat
 	
 	vector<double> dists;
 	if (matches->size() == 0) {
-		vector<vector<DMatch> > nn_matches;
-		matcher.knnMatch(descriptors_1,descriptors_2,nn_matches,1);
+		vector<DMatch> s_matches;
+		matcher.match(descriptors_1,descriptors_2,s_matches);
 		matches->clear();
-		for(int i=0;i<nn_matches.size();i++) {
-			if(nn_matches[i].size()>0) {
-				matches->push_back(nn_matches[i][0]);
-				double dist = matches->back().distance;
-				if(fabs(dist) > 10000) dist = 1.0;
-				matches->back().distance = dist;
-				dists.push_back(dist);
-			}
+		for(int i=0;i<s_matches.size();i++) {
+			matches->push_back(s_matches[i]);
+			double dist = matches->back().distance;
+			if(fabs(dist) > 10000) dist = 1.0;
+			matches->back().distance = dist;
+			dists.push_back(dist);
 		}
+		//vector<vector<DMatch> > nn_matches;
+		//matcher.knnMatch(descriptors_1,descriptors_2,nn_matches,1);
+		//for(int i=0;i<nn_matches.size();i++) {
+		//	if(nn_matches[i].size()>0) {
+		//		matches->push_back(nn_matches[i][0]);
+		//		double dist = matches->back().distance;
+		//		if(fabs(dist) > 10000) dist = 1.0;
+		//		matches->back().distance = dist;
+		//		dists.push_back(dist);
+		//	}
+		//}
+		//vector<vector<DMatch> > nn_matches;
+  //      matcher.radiusMatch(descriptors_1,descriptors_2,nn_matches,10.0);
+		//for(int i=0;i<nn_matches.size();i++) {
+		//	if(nn_matches[i].size()>0) {
+		//		matches->push_back(nn_matches[i][0]);
+		//		double dist = matches->back().distance;
+		//		if(fabs(dist) > 10000) dist = 1.0;
+		//		matches->back().distance = dist;
+		//		dists.push_back(dist);
+		//	}
+		//}
 	}
 	
 	double max_dist = 0; double min_dist = 0.0;
@@ -144,19 +164,17 @@ void RichFeatureMatcher::MatchFeatures(int idx_i, int idx_j, vector<DMatch>* mat
 		}
 	}
 
-	cout << "Keep " << good_matches_.size() << " out of " << matches->size() << " matches" << endl;
+	cout  << "Keep " << good_matches_.size() << " out of " << matches->size() << " matches" << endl;
 
 	*matches = good_matches_;
 
-	return;
-	
-#if 0
 #ifdef __SFM__DEBUG__
-	cout << "keypoints_1.size() " << keypoints_1.size() << " imgpts1_good.size() " << imgpts1_good.size() << endl;
-	cout << "keypoints_2.size() " << keypoints_2.size() << " imgpts2_good.size() " << imgpts2_good.size() << endl;
+	cout  << "keypoints_1.size() " << keypoints_1.size() << " imgpts1_good.size() " << imgpts1_good.size() << endl;
+	cout  << "keypoints_2.size() " << keypoints_2.size() << " imgpts2_good.size() " << imgpts2_good.size() << endl;
 	
 	{
 		//-- Draw only "good" matches
+        namedWindow("Feature Matches",0);
 		Mat img_matches;
 		drawMatches( img_1, keypoints_1, img_2, keypoints_2,
 					good_matches_, img_matches, Scalar::all(-1), Scalar::all(-1),
@@ -164,9 +182,12 @@ void RichFeatureMatcher::MatchFeatures(int idx_i, int idx_j, vector<DMatch>* mat
 		//-- Show detected matches
 		imshow( "Feature Matches", img_matches );
 		waitKey(100);
-		destroyWindow("Feature Matches");
+		//destroyWindow("Feature Matches");
 	}
 #endif
+	return;
+	
+#if 0
 	
 	vector<uchar> status;
 	vector<KeyPoint> imgpts2_very_good,imgpts1_very_good;

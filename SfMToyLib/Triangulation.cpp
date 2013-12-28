@@ -30,11 +30,11 @@
 #include "Triangulation.h"
 
 #include <iostream>
-
+#include <opencv2/core/utility.hpp>
 using namespace std;
 using namespace cv;
 
-#undef __SFM__DEBUG__
+//#undef __SFM__DEBUG__
 
 
 /**
@@ -147,7 +147,7 @@ double TriangulatePoints(const vector<KeyPoint>& pt_set1,
 				0,		0,		0,		1);
 	Matx44d P1inv(P1_.inv());
 	
-	cout << "Triangulating...";
+	cout  <<"Triangulating...";
 	double t = getTickCount();
 	vector<double> reproj_error;
 	unsigned int pts_size = pt_set1.size();
@@ -230,7 +230,7 @@ double TriangulatePoints(const vector<KeyPoint>& pt_set1,
 	
 	Scalar mse = mean(reproj_error);
 	t = ((double)getTickCount() - t)/getTickFrequency();
-	cout << "Done. ("<<pointcloud.size()<<"points, " << t <<"s, mean reproj err = " << mse[0] << ")"<< endl;
+	cout  <<"Done. ("<<pointcloud.size()<<"points, " << t <<"s, mean reproj err = " << mse[0] << ")"<< endl;
 	
 	//show "range image"
 #ifdef __SFM__DEBUG__
@@ -239,13 +239,13 @@ double TriangulatePoints(const vector<KeyPoint>& pt_set1,
 		minMaxLoc(depths, &minVal, &maxVal);
 		Mat tmp(240,320,CV_8UC3,Scalar(0,0,0)); //cvtColor(img_1_orig, tmp, CV_BGR2HSV);
 		for (unsigned int i=0; i<pointcloud.size(); i++) {
-			double _d = MAX(MIN((pointcloud[i].z-minVal)/(maxVal-minVal),1.0),0.0);
-			circle(tmp, correspImg1Pt[i].pt, 1, Scalar(255 * (1.0-(_d)),255,255), CV_FILLED);
+			double _d = MAX(MIN((pointcloud[i].pt.z-minVal)/(maxVal-minVal),1.0),0.0);
+            circle(tmp, correspImg1Pt[i].pt, 1, Scalar(255 * (1.0-(_d)),255,255), cv::FILLED);
 		}
-		cvtColor(tmp, tmp, CV_HSV2BGR);
+		cvtColor(tmp, tmp, COLOR_HSV2BGR);
 		imshow("Depth Map", tmp);
-		waitKey(0);
-		destroyWindow("Depth Map");
+		waitKey(10);
+		//destroyWindow("Depth Map");
 	}	
 #endif
 	

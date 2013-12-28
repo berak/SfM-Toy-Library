@@ -30,6 +30,7 @@
 
 #include "MultiCameraPnP.h"
 #include "BundleAdjuster.h"
+#include "assert.h"
 
 using namespace std;
 
@@ -37,6 +38,7 @@ using namespace std;
 #include <opencv2/gpu/gpu.hpp>
 #endif
 #include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/core/utility.hpp>
 
 bool sort_by_first(pair<int,pair<int,int> > a, pair<int,pair<int,int> > b) { return a.first < b.first; }
 
@@ -50,7 +52,7 @@ int MultiCameraPnP::FindHomographyInliers2Views(int vi, int vj)
 	double minVal,maxVal; cv::minMaxIdx(ipts,&minVal,&maxVal); //TODO flatten point2d?? or it takes max of width and height
 
 	vector<uchar> status;
-	cv::Mat H = cv::findHomography(ipts,jpts,status,CV_RANSAC, 0.004 * maxVal); //threshold from Snavely07
+    cv::Mat H = cv::findHomography(ipts,jpts,status,cv::RANSAC, 0.004 * maxVal); //threshold from Snavely07
 	return cv::countNonZero(status); //number of inliers
 }
 
@@ -58,7 +60,7 @@ int MultiCameraPnP::FindHomographyInliers2Views(int vi, int vj)
  * Get an initial 3D point cloud from 2 views only
  */
 void MultiCameraPnP::GetBaseLineTriangulation() {
-	std::cout << "=========================== Baseline triangulation ===========================\n";
+	std::cout  << "=========================== Baseline triangulation ===========================\n";
 
 	cv::Matx34d P(1,0,0,0,
 				  0,1,0,0,
@@ -70,7 +72,7 @@ void MultiCameraPnP::GetBaseLineTriangulation() {
 	std::vector<CloudPoint> tmp_pcloud;
 
 	//sort pairwise matches to find the lowest Homography inliers [Snavely07 4.2]
-	cout << "Find highest match...";
+	cout  << "Find highest match...";
 	list<pair<int,pair<int,int> > > matches_sizes;
 	//TODO: parallelize!
 	for(std::map<std::pair<int,int> ,std::vector<cv::DMatch> >::iterator i = matches_matrix.begin(); i != matches_matrix.end(); ++i) {
@@ -79,11 +81,11 @@ void MultiCameraPnP::GetBaseLineTriangulation() {
 		else {
 			int Hinliers = FindHomographyInliers2Views((*i).first.first,(*i).first.second);
 			int percent = (int)(((double)Hinliers) / ((double)(*i).second.size()) * 100.0);
-			cout << "[" << (*i).first.first << "," << (*i).first.second << " = "<<percent<<"] ";
+			cout  << "[" << (*i).first.first << "," << (*i).first.second << " = "<<percent<<"] ";
 			matches_sizes.push_back(make_pair((int)percent,(*i).first));
 		}
 	}
-	cout << endl;
+	cout  << endl;
 	matches_sizes.sort(sort_by_first);
 
 	//Reconstruct from two views
@@ -98,7 +100,7 @@ void MultiCameraPnP::GetBaseLineTriangulation() {
 		m_second_view = (*highest_pair).second.second;
 		m_first_view  = (*highest_pair).second.first;
 
-		std::cout << " -------- " << imgs_names[m_first_view] << " and " << imgs_names[m_second_view] << " -------- " <<std::endl;
+		std::cout  << " -------- " << imgs_names[m_first_view] << " and " << imgs_names[m_second_view] << " -------- " <<std::endl;
 		//what if reconstrcution of first two views is bad? fallback to another pair
 		//See if the Fundamental Matrix between these two views is good
 		goodF = FindCameraMatrices(K, Kinv, distortion_coeff,
@@ -123,30 +125,30 @@ void MultiCameraPnP::GetBaseLineTriangulation() {
 
 			bool good_triangulation = TriangulatePointsBetweenViews(m_second_view,m_first_view,new_triangulated,add_to_cloud);
 			if(!good_triangulation || cv::countNonZero(add_to_cloud) < 10) {
-				std::cout << "triangulation failed" << std::endl;
+				std::cout  << "triangulation failed" << std::endl;
 				goodF = false;
 				Pmats[m_first_view] = 0;
 				Pmats[m_second_view] = 0;
 				m_second_view++;
 			} else {
 				assert(new_triangulated[0].imgpt_for_img.size() > 0);
-				std::cout << "before triangulation: " << pcloud.size();
+				std::cout  << "before triangulation: " << pcloud.size();
 				for (unsigned int j=0; j<add_to_cloud.size(); j++) {
 					if(add_to_cloud[j] == 1) {
 						pcloud.push_back(new_triangulated[j]);
 					}
 				}
-				std::cout << " after " << pcloud.size() << std::endl;
+				std::cout  << " after " << pcloud.size() << std::endl;
 			}				
 		}
 	}
 		
 	if (!goodF) {
-		cerr << "Cannot find a good pair of images to obtain a baseline triangulation" << endl;
+		cerr  << "Cannot find a good pair of images to obtain a baseline triangulation" << endl;
 		exit(0);
 	}
 	
-	cout << "Taking baseline from " << imgs_names[m_first_view] << " and " << imgs_names[m_second_view] << endl;
+	cout  << "Taking baseline from " << imgs_names[m_first_view] << " and " << imgs_names[m_second_view] << endl;
 	
 //	double reproj_error;
 //	{
@@ -173,7 +175,7 @@ void MultiCameraPnP::GetBaseLineTriangulation() {
 //			pcloud[i].imgpt_for_img[m_second_view] = matches[i].trainIdx;
 //		}
 //	}
-//	std::cout << "triangulation reproj error " << reproj_error << std::endl;
+//	std::cout  << "triangulation reproj error " << reproj_error << std::endl;
 }
 
 void MultiCameraPnP::Find2D3DCorrespondences(int working_view, 
@@ -209,7 +211,7 @@ void MultiCameraPnP::Find2D3DCorrespondences(int working_view,
 			}
 		}
 	}
-	cout << "found " << ppcloud.size() << " 3d-2d point correspondences"<<endl;
+	cout  << "found " << ppcloud.size() << " 3d-2d point correspondences"<<endl;
 }
 
 bool MultiCameraPnP::FindPoseEstimation(
@@ -223,7 +225,7 @@ bool MultiCameraPnP::FindPoseEstimation(
 {
 	if(ppcloud.size() <= 7 || imgPoints.size() <= 7 || ppcloud.size() != imgPoints.size()) { 
 		//something went wrong aligning 3D to 2D points..
-		cerr << "couldn't find [enough] corresponding cloud points... (only " << ppcloud.size() << ")" <<endl;
+		cerr  << "couldn't find [enough] corresponding cloud points... (only " << ppcloud.size() << ")" <<endl;
 		return false;
 	}
 
@@ -231,7 +233,7 @@ bool MultiCameraPnP::FindPoseEstimation(
 	if(!use_gpu) {
 		//use CPU
 		double minVal,maxVal; cv::minMaxIdx(imgPoints,&minVal,&maxVal);
-		CV_PROFILE("solvePnPRansac",cv::solvePnPRansac(ppcloud, imgPoints, K, distortion_coeff, rvec, t, true, 1000, 0.006 * maxVal, 0.25 * (double)(imgPoints.size()), inliers, CV_EPNP);)
+        cv::solvePnPRansac(ppcloud, imgPoints, K, distortion_coeff, rvec, t, true, 1000, 0.006 * maxVal, 0.25 * (double)(imgPoints.size()), inliers, cv::EPNP);
 		//CV_PROFILE("solvePnP",cv::solvePnP(ppcloud, imgPoints, K, distortion_coeff, rvec, t, true, CV_EPNP);)
 	} else {
 #ifdef HAVE_OPENCV_GPU
@@ -285,23 +287,23 @@ bool MultiCameraPnP::FindPoseEstimation(
 	//visualizerShowCamera(R,t,0,255,0,0.1);
 
 	if(inliers.size() < (double)(imgPoints.size())/5.0) {
-		cerr << "not enough inliers to consider a good pose ("<<inliers.size()<<"/"<<imgPoints.size()<<")"<< endl;
+		cerr  << "not enough inliers to consider a good pose ("<<inliers.size()<<"/"<<imgPoints.size()<<")"<< endl;
 		return false;
 	}
 
 	if(cv::norm(t) > 200.0) {
 		// this is bad...
-		cerr << "estimated camera movement is too big, skip this camera\r\n";
+		cerr  << "estimated camera movement is too big, skip this camera\r\n";
 		return false;
 	}
 
 	cv::Rodrigues(rvec, R);
 	if(!CheckCoherentRotation(R)) {
-		cerr << "rotation is incoherent. we should try a different base view..." << endl;
+		cerr  << "rotation is incoherent. we should try a different base view..." << endl;
 		return false;
 	}
 
-	std::cout << "found t = " << t << "\nR = \n"<<R<<std::endl;
+	std::cout  << "found t = " << t << "\nR = \n"<<R<<std::endl;
 	return true;
 }
 
@@ -312,7 +314,7 @@ bool MultiCameraPnP::TriangulatePointsBetweenViews(
 	vector<int>& add_to_cloud
 	) 
 {
-	cout << " Triangulate " << imgs_names[working_view] << " and " << imgs_names[older_view] << endl;
+	cout  << " Triangulate " << imgs_names[working_view] << " and " << imgs_names[older_view] << endl;
 	//get the left camera matrix
 	//TODO: potential bug - the P mat for <view> may not exist? or does it...
 	cv::Matx34d P = Pmats[older_view];
@@ -325,17 +327,17 @@ bool MultiCameraPnP::TriangulatePointsBetweenViews(
 
 	//adding more triangulated points to general cloud
 	double reproj_error = TriangulatePoints(pt_set1, pt_set2, K, Kinv, distortion_coeff, P, P1, new_triangulated, correspImg1Pt);
-	std::cout << "triangulation reproj error " << reproj_error << std::endl;
+	std::cout  << "triangulation reproj error " << reproj_error << std::endl;
 
 	vector<uchar> trig_status;
 	if(!TestTriangulation(new_triangulated, P, trig_status) || !TestTriangulation(new_triangulated, P1, trig_status)) {
-		cerr << "Triangulation did not succeed" << endl;
+		cerr  << "Triangulation did not succeed" << endl;
 		return false;
 	}
 //	if(reproj_error > 20.0) {
 //		// somethign went awry, delete those triangulated points
 //		//				pcloud.resize(start_i);
-//		cerr << "reprojection error too high, don't include these points."<<endl;
+//		cerr  << "reprojection error too high, don't include these points."<<endl;
 //		return false;
 //	}
 
@@ -366,7 +368,7 @@ bool MultiCameraPnP::TriangulatePointsBetweenViews(
 		}
 	}
 
-	cout << "filtered out " << (new_triangulated.size() - new_triangulated_filtered.size()) << " high-error points" << endl;
+	cout  << "filtered out " << (new_triangulated.size() - new_triangulated_filtered.size()) << " high-error points" << endl;
 
 	//all points filtered out?
 	if(new_triangulated_filtered.size() <= 0) return false;
@@ -410,13 +412,13 @@ bool MultiCameraPnP::TriangulatePointsBetweenViews(
 					{
 						//Point was already found in <view_> - strengthen it in the known cloud, if it exists there
 
-						//cout << "2d pt " << submatches[ii].queryIdx << " in img " << view_ << " matched 2d pt " << submatches[ii].trainIdx << " in img " << i << endl;
+						//cout  << "2d pt " << submatches[ii].queryIdx << " in img " << view_ << " matched 2d pt " << submatches[ii].trainIdx << " in img " << i << endl;
 						for (unsigned int pt3d=0; pt3d<pcloud.size(); pt3d++) {
 							if (pcloud[pt3d].imgpt_for_img[view_] == submatches[ii].queryIdx) 
 							{
 								//pcloud[pt3d] - a point that has 2d reference in <view_>
 
-								//cout << "3d point "<<pt3d<<" in cloud, referenced 2d pt " << submatches[ii].queryIdx << " in view " << view_ << endl;
+								//cout  << "3d point "<<pt3d<<" in cloud, referenced 2d pt " << submatches[ii].queryIdx << " in view " << view_ << endl;
 #pragma omp critical 
 								{
 									pcloud[pt3d].imgpt_for_img[working_view] = matches[j].trainIdx;
@@ -439,12 +441,12 @@ bool MultiCameraPnP::TriangulatePointsBetweenViews(
 			}
 		}
 	}
-	std::cout << found_other_views_count << "/" << new_triangulated.size() << " points were found in other views, adding " << cv::countNonZero(add_to_cloud) << " new\n";
+	std::cout  << found_other_views_count << "/" << new_triangulated.size() << " points were found in other views, adding " << cv::countNonZero(add_to_cloud) << " new\n";
 	return true;
 }
 
 void MultiCameraPnP::AdjustCurrentBundle() {
-	cout << "======================== Bundle Adjustment ==========================\n";
+	cout  << "======================== Bundle Adjustment ==========================\n";
 
 	pointcloud_beforeBA = pcloud;
 	GetRGBForPointCloud(pointcloud_beforeBA,pointCloudRGB_beforeBA);
@@ -455,7 +457,7 @@ void MultiCameraPnP::AdjustCurrentBundle() {
 	K = cam_matrix;
 	Kinv = K.inv();
 	
-	cout << "use new K " << endl << K << endl;
+	cout  << "use new K " << endl << K << endl;
 	
 	GetRGBForPointCloud(pcloud,pointCloudRGB);
 }	
@@ -486,15 +488,15 @@ void MultiCameraPnP::PruneMatchesBasedOnF() {
 
 void MultiCameraPnP::RecoverDepthFromImages() {
 	if(!bInitialized) {
-		std::cerr << "Not initialized with images\n";
+		std::cerr  << "Not initialized with images\n";
 		return;
 	}
 	if(!features_matched) 
 		OnlyMatchFeatures();
 	
-	std::cout << "======================================================================\n";
-	std::cout << "======================== Depth Recovery Start ========================\n";
-	std::cout << "======================================================================\n";
+	std::cout  << "======================================================================\n";
+	std::cout  << "======================== Depth Recovery Start ========================\n";
+	std::cout  << "======================================================================\n";
 	
 	PruneMatchesBasedOnF();
 	GetBaseLineTriangulation();
@@ -526,7 +528,7 @@ void MultiCameraPnP::RecoverDepthFromImages() {
 			if(done_views.find(_i) != done_views.end()) continue; //already done with this view
 
 			vector<cv::Point3f> tmp3d; vector<cv::Point2f> tmp2d;
-			cout << imgs_names[_i] << ": ";
+			cout  << imgs_names[_i] << ": ";
 			Find2D3DCorrespondences(_i,tmp3d,tmp2d);
 			if(tmp3d.size() > max_2d3d_count) {
 				max_2d3d_count = tmp3d.size();
@@ -536,7 +538,7 @@ void MultiCameraPnP::RecoverDepthFromImages() {
 		}
 		int i = max_2d3d_view; //highest 2d3d matching view
 
-		std::cout << "-------------------------- " << imgs_names[i] << " --------------------------\n";
+		std::cout  << "-------------------------- " << imgs_names[i] << " --------------------------\n";
 		done_views.insert(i); // don't repeat it for now
 
 		bool pose_estimated = FindPoseEstimation(i,rvec,t,R,max_3d,max_2d);
@@ -554,19 +556,19 @@ void MultiCameraPnP::RecoverDepthFromImages() {
 			int view = *done_view;
 			if( view == i ) continue; //skip current...
 
-			cout << " -> " << imgs_names[view] << endl;
+			cout  << " -> " << imgs_names[view] << endl;
 			
 			vector<CloudPoint> new_triangulated;
 			vector<int> add_to_cloud;
 			bool good_triangulation = TriangulatePointsBetweenViews(i,view,new_triangulated,add_to_cloud);
 			if(!good_triangulation) continue;
 
-			std::cout << "before triangulation: " << pcloud.size();
+			std::cout  << "before triangulation: " << pcloud.size();
 			for (int j=0; j<add_to_cloud.size(); j++) {
 				if(add_to_cloud[j] == 1)
 					pcloud.push_back(new_triangulated[j]);
 			}
-			std::cout << " after " << pcloud.size() << std::endl;
+			std::cout  << " after " << pcloud.size() << std::endl;
 			//break;
 		}
 		good_views.insert(i);
@@ -575,7 +577,7 @@ void MultiCameraPnP::RecoverDepthFromImages() {
 		update();
 	}
 
-	cout << "======================================================================\n";
-	cout << "========================= Depth Recovery DONE ========================\n";
-	cout << "======================================================================\n";
+	cout  << "======================================================================\n";
+	cout  << "========================= Depth Recovery DONE ========================\n";
+	cout  << "======================================================================\n";
 }

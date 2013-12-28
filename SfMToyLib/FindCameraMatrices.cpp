@@ -34,6 +34,7 @@
 #include <iostream>
 
 #include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/core/utility.hpp>
 
 using namespace cv;
 using namespace std;
@@ -106,30 +107,30 @@ void DecomposeEssentialUsingHorn90(double _E[9], double _R1[9], double _R2[9], d
 	Map<Vector3d> t1(_t1),t2(_t2); 
 	t1 = b1; t2 = b2;
 	
-	cout << "Horn90 provided " << endl << R1 << endl << "and" << endl << R2 << endl;
+	cout  << "Horn90 provided " << endl << R1 << endl << "and" << endl << R2 << endl;
 #endif
 }
 
 bool CheckCoherentRotation(cv::Mat_<double>& R) {
-	std::cout << "R; " << R << std::endl;
+	std::cout  << "R; " << R << std::endl;
 	//double s = cv::norm(cv::abs(R),cv::Mat_<double>::eye(3,3),cv::NORM_L1);
-	//std::cout << "Distance from I: " << s << std::endl;
+	//std::cout  << "Distance from I: " << s << std::endl;
 	//if (s > 2.3) { // norm of R from I is large -> probably bad rotation
-	//	std::cout << "rotation is probably not coherent.." << std::endl;
+	//	std::cout  << "rotation is probably not coherent.." << std::endl;
 	//	return false;	//skip triangulation
 	//}
 	//Eigen::Map<Eigen::Matrix<double,3,3,Eigen::RowMajor> > eR(R[0]);
 	//if(eR(2,0) < -0.9)
 	//{
-	//	cout << "rotate 180deg (PI rad) on Y" << endl;
+	//	cout  << "rotate 180deg (PI rad) on Y" << endl;
 
-	//	cout << "before" << endl << eR << endl;
+	//	cout  << "before" << endl << eR << endl;
 	//	Eigen::AngleAxisd aad(-M_PI/2.0,Eigen::Vector3d::UnitY());
 	//	eR *= aad.toRotationMatrix();
-	//	cout << "after" << endl << eR << endl;
+	//	cout  << "after" << endl << eR << endl;
 	//}
 	//if(eR(0,0) < -0.9) {
-	//	cout << "flip right vector" << endl;
+	//	cout  << "flip right vector" << endl;
 	//	eR.row(0) = -eR.row(0);
 	//}
 	
@@ -180,8 +181,8 @@ Mat GetFundamentalMat(const vector<KeyPoint>& imgpts1,
 		KeyPointsToPoints(imgpts1_tmp, pts1);
 		KeyPointsToPoints(imgpts2_tmp, pts2);
 #ifdef __SFM__DEBUG__
-		cout << "pts1 " << pts1.size() << " (orig pts " << imgpts1_tmp.size() << ")" << endl;
-		cout << "pts2 " << pts2.size() << " (orig pts " << imgpts2_tmp.size() << ")" << endl;
+		cout  << "pts1 " << pts1.size() << " (orig pts " << imgpts1_tmp.size() << ")" << endl;
+		cout  << "pts2 " << pts2.size() << " (orig pts " << imgpts2_tmp.size() << ")" << endl;
 #endif
 		double minVal,maxVal;
 		cv::minMaxIdx(pts1,&minVal,&maxVal);
@@ -189,7 +190,7 @@ Mat GetFundamentalMat(const vector<KeyPoint>& imgpts1,
 	}
 	
 	vector<DMatch> new_matches;
-	cout << "F keeping " << countNonZero(status) << " / " << status.size() << endl;	
+	cout  << "F keeping " << countNonZero(status) << " / " << status.size() << endl;	
 	for (unsigned int i=0; i<status.size(); i++) {
 		if (status[i]) 
 		{
@@ -206,7 +207,7 @@ Mat GetFundamentalMat(const vector<KeyPoint>& imgpts1,
 		}
 	}	
 	
-	cout << matches.size() << " matches before, " << new_matches.size() << " new matches after Fundamental Matrix\n";
+	cout  << matches.size() << " matches before, " << new_matches.size() << " new matches after Fundamental Matrix\n";
 	matches = new_matches; //keep only those points who survived the fundamental matrix
 	
 #if 0
@@ -254,7 +255,7 @@ void TakeSVDOfE(Mat_<double>& E, Mat& svd_u, Mat& svd_vt, Mat& svd_w) {
 	svd_w = svd.w;
 #else
 	//Using Eigen's SVD
-	cout << "Eigen3 SVD..\n";
+	cout  << "Eigen3 SVD..\n";
 	Eigen::Matrix3f  e = Eigen::Map<Eigen::Matrix<double,3,3,Eigen::RowMajor> >((double*)E.data).cast<float>();
 	Eigen::JacobiSVD<Eigen::MatrixXf> svd(e, Eigen::ComputeThinU | Eigen::ComputeThinV);
 	Eigen::MatrixXf Esvd_u = svd.matrixU();
@@ -269,9 +270,9 @@ void TakeSVDOfE(Mat_<double>& E, Mat& svd_u, Mat& svd_vt, Mat& svd_w) {
 	svd_w = (Mat_<double>(1,3) << svd.singularValues()[0] , svd.singularValues()[1] , svd.singularValues()[2]);
 #endif
 	
-	cout << "----------------------- SVD ------------------------\n";
-	cout << "U:\n"<<svd_u<<"\nW:\n"<<svd_w<<"\nVt:\n"<<svd_vt<<endl;
-	cout << "----------------------------------------------------\n";
+	cout  << "----------------------- SVD ------------------------\n";
+	cout  << "U:\n"<<svd_u<<"\nW:\n"<<svd_w<<"\nVt:\n"<<svd_vt<<endl;
+	cout  << "----------------------------------------------------\n";
 }
 
 bool TestTriangulation(const vector<CloudPoint>& pcloud, const Matx34d& P, vector<uchar>& status) {
@@ -290,7 +291,7 @@ bool TestTriangulation(const vector<CloudPoint>& pcloud, const Matx34d& P, vecto
 	int count = countNonZero(status);
 
 	double percentage = ((double)count / (double)pcloud.size());
-	cout << count << "/" << pcloud.size() << " = " << percentage*100.0 << "% are in front of camera" << endl;
+	cout  << count << "/" << pcloud.size() << " = " << percentage*100.0 << "% are in front of camera" << endl;
 	if(percentage < 0.75)
 		return false; //less than 75% of the points are in front of the camera
 
@@ -317,7 +318,7 @@ bool TestTriangulation(const vector<CloudPoint>& pcloud, const Matx34d& P, vecto
 			if(D < p_to_plane_thresh) num_inliers++;
 		}
 
-		cout << num_inliers << "/" << pcloud.size() << " are coplanar" << endl;
+		cout  << num_inliers << "/" << pcloud.size() << " are coplanar" << endl;
 		if((double)num_inliers / (double)(pcloud.size()) > 0.85)
 			return false;
 	}
@@ -341,7 +342,7 @@ bool DecomposeEtoRandT(
 	double singular_values_ratio = fabsf(svd_w.at<double>(0) / svd_w.at<double>(1));
 	if(singular_values_ratio>1.0) singular_values_ratio = 1.0/singular_values_ratio; // flip ratio to keep it [0,1]
 	if (singular_values_ratio < 0.7) {
-		cout << "singular values are too far apart\n";
+		cout  << "singular values are too far apart\n";
 		return false;
 	}
 
@@ -381,7 +382,7 @@ bool FindCameraMatrices(const Mat& K,
 {
 	//Find camera matrices
 	{
-		cout << "Find camera matrices...";
+		cout  << "Find camera matrices...";
 		double t = getTickCount();
 		
 		Mat F = GetFundamentalMat(imgpts1,imgpts2,imgpts1_good,imgpts2_good,matches
@@ -399,7 +400,7 @@ bool FindCameraMatrices(const Mat& K,
 
 		//according to http://en.wikipedia.org/wiki/Essential_matrix#Properties_of_the_essential_matrix
 		if(fabsf(determinant(E)) > 1e-07) {
-			cout << "det(E) != 0 : " << determinant(E) << "\n";
+			cout  << "det(E) != 0 : " << determinant(E) << "\n";
 			P1 = 0;
 			return false;
 		}
@@ -415,12 +416,12 @@ bool FindCameraMatrices(const Mat& K,
 
 			if(determinant(R1)+1.0 < 1e-09) {
 				//according to http://en.wikipedia.org/wiki/Essential_matrix#Showing_that_it_is_valid
-				cout << "det(R) == -1 ["<<determinant(R1)<<"]: flip E's sign" << endl;
+				cout  << "det(R) == -1 ["<<determinant(R1)<<"]: flip E's sign" << endl;
 				E = -E;
 				DecomposeEtoRandT(E,R1,R2,t1,t2);
 			}
 			if (!CheckCoherentRotation(R1)) {
-				cout << "resulting rotation is not coherent\n";
+				cout  << "resulting rotation is not coherent\n";
 				P1 = 0;
 				return false;
 			}
@@ -428,7 +429,7 @@ bool FindCameraMatrices(const Mat& K,
 			P1 = Matx34d(R1(0,0),	R1(0,1),	R1(0,2),	t1(0),
 						 R1(1,0),	R1(1,1),	R1(1,2),	t1(1),
 						 R1(2,0),	R1(2,1),	R1(2,2),	t1(2));
-			cout << "Testing P1 " << endl << Mat(P1) << endl;
+			cout  << "Testing P1 " << endl << Mat(P1) << endl;
 			
 			vector<CloudPoint> pcloud,pcloud1; vector<KeyPoint> corresp;
 			double reproj_error1 = TriangulatePoints(imgpts1_good, imgpts2_good, K, Kinv, distcoeff, P, P1, pcloud, corresp);
@@ -439,7 +440,7 @@ bool FindCameraMatrices(const Mat& K,
 				P1 = Matx34d(R1(0,0),	R1(0,1),	R1(0,2),	t2(0),
 							 R1(1,0),	R1(1,1),	R1(1,2),	t2(1),
 							 R1(2,0),	R1(2,1),	R1(2,2),	t2(2));
-				cout << "Testing P1 "<< endl << Mat(P1) << endl;
+				cout  << "Testing P1 "<< endl << Mat(P1) << endl;
 
 				pcloud.clear(); pcloud1.clear(); corresp.clear();
 				reproj_error1 = TriangulatePoints(imgpts1_good, imgpts2_good, K, Kinv, distcoeff, P, P1, pcloud, corresp);
@@ -447,7 +448,7 @@ bool FindCameraMatrices(const Mat& K,
 				
 				if (!TestTriangulation(pcloud,P1,tmp_status) || !TestTriangulation(pcloud1,P,tmp_status) || reproj_error1 > 100.0 || reproj_error2 > 100.0) {
 					if (!CheckCoherentRotation(R2)) {
-						cout << "resulting rotation is not coherent\n";
+						cout  << "resulting rotation is not coherent\n";
 						P1 = 0;
 						return false;
 					}
@@ -455,7 +456,7 @@ bool FindCameraMatrices(const Mat& K,
 					P1 = Matx34d(R2(0,0),	R2(0,1),	R2(0,2),	t1(0),
 								 R2(1,0),	R2(1,1),	R2(1,2),	t1(1),
 								 R2(2,0),	R2(2,1),	R2(2,2),	t1(2));
-					cout << "Testing P1 "<< endl << Mat(P1) << endl;
+					cout  << "Testing P1 "<< endl << Mat(P1) << endl;
 
 					pcloud.clear(); pcloud1.clear(); corresp.clear();
 					reproj_error1 = TriangulatePoints(imgpts1_good, imgpts2_good, K, Kinv, distcoeff, P, P1, pcloud, corresp);
@@ -465,14 +466,14 @@ bool FindCameraMatrices(const Mat& K,
 						P1 = Matx34d(R2(0,0),	R2(0,1),	R2(0,2),	t2(0),
 									 R2(1,0),	R2(1,1),	R2(1,2),	t2(1),
 									 R2(2,0),	R2(2,1),	R2(2,2),	t2(2));
-						cout << "Testing P1 "<< endl << Mat(P1) << endl;
+						cout  << "Testing P1 "<< endl << Mat(P1) << endl;
 
 						pcloud.clear(); pcloud1.clear(); corresp.clear();
 						reproj_error1 = TriangulatePoints(imgpts1_good, imgpts2_good, K, Kinv, distcoeff, P, P1, pcloud, corresp);
 						reproj_error2 = TriangulatePoints(imgpts2_good, imgpts1_good, K, Kinv, distcoeff, P1, P, pcloud1, corresp);
 						
 						if (!TestTriangulation(pcloud,P1,tmp_status) || !TestTriangulation(pcloud1,P,tmp_status) || reproj_error1 > 100.0 || reproj_error2 > 100.0) {
-							cout << "Shit." << endl; 
+							cout  << "Shit." << endl; 
 							return false;
 						}
 					}				
@@ -484,7 +485,7 @@ bool FindCameraMatrices(const Mat& K,
 		}		
 		
 		t = ((double)getTickCount() - t)/getTickFrequency();
-		cout << "Done. (" << t <<"s)"<< endl;
+		cout  << "Done. (" << t <<"s)"<< endl;
 	}
 	return true;
 }

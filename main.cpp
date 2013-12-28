@@ -1,122 +1,151 @@
-/*
- *  main.cpp
- *  SfMToyUI
- *
- *  Created by Roy Shilkrot on 4/27/12.
- *  The MIT License (MIT)
- *
- *  Copyright (c) 2013 Roy Shilkrot
- *
- *  Permission is hereby granted, free of charge, to any person obtaining a copy
- *  of this software and associated documentation files (the "Software"), to deal
- *  in the Software without restriction, including without limitation the rights
- *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- *  copies of the Software, and to permit persons to whom the Software is
- *  furnished to do so, subject to the following conditions:
- *
- *  The above copyright notice and this permission notice shall be included in all
- *  copies or substantial portions of the Software.
- *
- *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- *  SOFTWARE.
- *
- */
+
+//  638297225
+//  2570
 
 #include <iostream>
 #include <string.h>
 
 #include "Distance.h"
 #include "MultiCameraPnP.h"
+#include "SfMUpdateListener.h"
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
-#ifdef HAVE_GUI
-#include <QApplication>
-#include <QGLFormat>
-
-#include "ViewerInterface.h"
-#endif
 
 using namespace std;
 
-#ifdef HAVE_OPENCV_GPU
-#include <opencv2/gpu/gpu.hpp>
-#endif
-
-#ifdef HAVE_GUI
-//------------------------------ Using Qt GUI ------------------------------
-int main(int argc, char** argv) { //test with real photos
-	// Read command lines arguments.
-	QApplication application(argc,argv);
-
-	QGLFormat glFormat;
-	glFormat.setVersion( 3, 2 );
-	glFormat.setProfile( QGLFormat::CoreProfile ); // Requires >=Qt-4.8.0
-	//    glFormat.setSampleBuffers( true );
-	QGLFormat::setDefaultFormat(glFormat);
-
-	// Instantiate the viewer.
-	ViewerInterface viewer;
-
-	viewer.setWindowTitle("SfM-Toy-Library UI");
-	
-	// Make the viewer window visible on screen.
-	viewer.show();
-
-	// Run main loop.
-	return application.exec();
-}
-
-#else
 std::vector<cv::Mat> images;
 std::vector<std::string> images_names;
 
+struct REnder : SfMUpdateListener
+{
+    pcl::visualization::CloudViewer viewer;
 
-void open_imgs_dir(char* dir_name, std::vector<cv::Mat>& images, std::vector<std::string>& images_names);
+    REnder() : viewer("reconstruction") 
+    {
+        viewer.runOnVisualizationThreadOnce(viewerOneOff);
+    }  
+
+    static void viewerOneOff( pcl::visualization::PCLVisualizer& pclviewer )
+    {
+        //viewer.initCameraParameters ();
+        pclviewer.addCoordinateSystem (0.05);
+	    pclviewer.setBackgroundColor (0.1, 0.1, 0.35);    
+	    pclviewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "reconstruction");
+    }
+
+
+    void update(std::vector<cv::Point3d> points,
+				std::vector<cv::Vec3b> rgb, 
+				std::vector<cv::Point3d> pcld_alternate,
+				std::vector<cv::Vec3b> pcldrgb_alternate, 
+				std::vector<cv::Matx34d> cameras) 
+    {
+        show(points,rgb,50.0);
+    }
+
+    void show( std::vector<cv::Point3d> points,	std::vector<cv::Vec3b> rgb, float filter=0.0f )
+    {
+        if ( points.empty() ) return;
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
+        cloud->is_dense = false;
+
+        for (size_t i=0; i<points.size (); ++i)
+        {
+		    pcl::PointXYZRGB p(0,200,0);
+            if ( rgb.size() > i )
+            {
+                p.r = rgb[i][2];
+                p.g = rgb[i][1];
+                p.b = rgb[i][0];
+            }
+            p.x = points[i].x;
+            p.y = points[i].y;
+            p.z = points[i].z;
+            cloud->push_back(p);
+        }
+
+        if ( filter > 0 )
+        {
+            // OutlierRemoval filtering 
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZRGB>);
+            pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB>sor;
+            sor.setInputCloud (cloud);
+            sor.setMeanK (filter);
+            sor.setStddevMulThresh (1.0);
+            sor.filter (*cloud_filtered);
+            cloud = cloud_filtered;
+        }
+
+        pcl::io::savePCDFileASCII ("reco.pcd", *cloud);
+        viewer.showCloud (cloud,  "reconstruction" );
+    }
+    void loop()
+    {
+	    while (!viewer.wasStopped ())
+	    {
+            cv::waitKey(10);
+	    }
+    }
+};
+
 
 //---------------------------- Using command-line ----------------------------
-
+int doSSBA = false;
 int main(int argc, char** argv) {
-	if (argc < 2) {
+    //string path_to_images = "dataset\\crazyhorse3";
+    string path_to_images = "dataset\\cactus3";
+    if (argc < 2) {
 		cerr << "USAGE: " << argv[0] << " <path_to_images> [use rich features (RICH/OF) = RICH] [use GPU (GPU/CPU) = GPU] [downscale factor = 1.0]" << endl;
-		return 0;
-	}
+		//return 0;
+	} else
+        path_to_images = string(argv[1]);
 	
 	double downscale_factor = 1.0;
-	if(argc >= 5)
-		downscale_factor = atof(argv[4]);
+	//if(argc >= 5)
+	//	downscale_factor = atof(argv[4]);
 
-	open_imgs_dir(argv[1],images,images_names,downscale_factor);
+	float outlier_filter = 0.0f;
+	if(argc >= 5)
+		outlier_filter = atof(argv[4]);
+
+    cv::Ptr<REnder> render = cv::makePtr<REnder>();
+
+    open_imgs_dir(path_to_images.c_str(),images,images_names,downscale_factor);
 	if(images.size() == 0) { 
 		cerr << "can't get image files" << endl;
 		return 1;
 	}
 
-	
-	cv::Ptr<MultiCameraPnP> distance = new MultiCameraPnP(images,images_names,string(argv[1]));
+    cv::Ptr<MultiCameraPnP> distance = cv::makePtr<MultiCameraPnP>(images,images_names,path_to_images);
 	if(argc < 3)
 		distance->use_rich_features = true;
 	else
-		distance->use_rich_features = (strcmp(argv[2], "RICH") == 0);
-	
-#ifdef HAVE_OPENCV_GPU
-	if(argc < 4)
-		distance->use_gpu = (cv::gpu::getCudaEnabledDeviceCount() > 0);
-	else
-		distance->use_gpu = (strcmp(argv[3], "GPU") == 0);
-#else
+		distance->use_rich_features = (stricmp(argv[2], "RICH") == 0);
+
+	if(argc>3)
+	    doSSBA = (stricmp(argv[3], "ssba") == 0);
+
 	distance->use_gpu = false;
-#endif
 	
-	cv::Ptr<VisualizerListener> visualizerListener = new VisualizerListener; //with ref-count
-	distance->attach(visualizerListener);
-	RunVisualizationThread();
+	//cv::Ptr<VisualizerListener> visualizerListener = cv::makePtr<VisualizerListener>(); //with ref-count
+	distance->attach(render);
+	
+    //RunVisualizationThread();
+    //render->show(distance->getPointCloud(),distance->getPointCloudRGB(),outlier_filter);
+
+    cerr  << " " << path_to_images 
+        << " rich:" << distance->use_rich_features 
+        << " sbba:" << doSSBA << endl;
 
 	distance->RecoverDepthFromImages();
 
+    render->loop();
+    //int k=0;
+    //cin >> k;
 	//TODO: save point cloud and cameras to file
 }
-#endif
+

@@ -37,7 +37,7 @@
 
 #ifdef __SFM__DEBUG__
 #include <opencv2/highgui/highgui.hpp>
-#include <omp.h>
+//#include <omp.h>
 #include <sstream>
 #endif
 
@@ -68,8 +68,8 @@ void OFFeatureMatcher::MatchFeatures(int idx_i, int idx_j, vector<DMatch>* match
 	// making sure images are grayscale
 	Mat prevgray,gray;
 	if (imgs[idx_i].channels() == 3) {
-		cvtColor(imgs[idx_i],prevgray,CV_RGB2GRAY);
-		cvtColor(imgs[idx_j],gray,CV_RGB2GRAY);
+		cvtColor(imgs[idx_i],prevgray,COLOR_RGB2GRAY);
+		cvtColor(imgs[idx_j],gray,COLOR_RGB2GRAY);
 	} else {
 		prevgray = imgs[idx_i];
 		gray = imgs[idx_j];
@@ -123,7 +123,7 @@ void OFFeatureMatcher::MatchFeatures(int idx_i, int idx_j, vector<DMatch>* match
 
 	vector<vector<DMatch> > knn_matches;
 	//FlannBasedMatcher matcher;
-	BFMatcher matcher(CV_L2);
+	BFMatcher matcher(NORM_L2);
 	CV_PROFILE("RadiusMatch",matcher.radiusMatch(to_find_flat,j_pts_flat,knn_matches,2.0f);)
 	CV_PROFILE("Prune",
 	for(int i=0;i<knn_matches.size();i++) {
@@ -146,12 +146,12 @@ void OFFeatureMatcher::MatchFeatures(int idx_i, int idx_j, vector<DMatch>* match
 		}
 	}
 	)
-	cout << "pruned " << matches->size() << " / " << knn_matches.size() << " matches" << endl;
+	cout  << "pruned " << matches->size() << " / " << knn_matches.size() << " matches" << endl;
 #if 0
 #ifdef __SFM__DEBUG__
 	{
 		// draw flow field
-		Mat img_matches; cvtColor(imgs[idx_i],img_matches,CV_GRAY2BGR);
+		Mat img_matches; cvtColor(imgs[idx_i],img_matches,COLOR_GRAY2BGR);
 		i_pts.clear(); j_pts.clear();
 		for(int i=0;i<matches->size();i++) {
 			//if (i%2 != 0) {
