@@ -68,6 +68,8 @@ protected:
 	cv::Ptr<IFeatureMatcher> feature_matcher;
 	
 	bool features_matched;
+    std::string matchfile;
+
 public:
 	bool use_rich_features;
 	bool use_gpu;
@@ -100,8 +102,9 @@ public:
 	MultiCameraDistance(
 		const std::vector<cv::Mat>& imgs_, 
 		const std::vector<std::string>& imgs_names_, 
-		const std::string& imgs_path_):
-	imgs_names(imgs_names_),features_matched(false),use_rich_features(true),use_gpu(false)
+		const std::string& imgs_path_,
+		const std::string& matchfile_):
+	imgs_names(imgs_names_),features_matched(false),use_rich_features(true),use_gpu(false),matchfile(matchfile_)
 	{
 		setImages(imgs_,imgs_names_,imgs_path_);
 	}

@@ -346,8 +346,8 @@ void MatchFeatures(const Mat& img_1, const Mat& img_1_orig,
 		Mat small_im2; resize(img_2_orig,small_im2,Size(),downscale,downscale);
 		int numberOfDisparities = ((small_im1.cols/8) + 15) & -16;
 		int cn = img_1_orig.channels();
-		int blockSize = 16;
-        int SADWindowSize = 9;
+		int blockSize = 5;
+        int SADWindowSize = 5;
         int P1 = 8*cn * SADWindowSize;
 		int P2 = 32*cn * SADWindowSize * SADWindowSize;
         Ptr<StereoSGBM> sgbm = createStereoSGBM(0,numberOfDisparities,blockSize,P1,P2,1,63,10,100,32);

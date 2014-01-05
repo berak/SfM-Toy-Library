@@ -1,4 +1,11 @@
-
+/*
+//--reproj err before ba			
+			cv::projectPoints(Mat(_3dPoints4Bund),rvec0,tvec0,Mat_intr,distCoeffs[1],imagePoints_3d_t0_2d_0);
+			RprjErr_0= ComputeReprErr(markers_from_matlab_1st_image,imagePoints_3d_t0_2d_0,PointcloudToBeVerified);
+			cv::projectPoints(Mat(_3dPoints4Bund),rvec1,tvec1,Mat_intr,distCoeffs[1],imagePoints_3d_t0_2d_1);
+			RprjErr_1 = ComputeReprErr(markers_from_matlab_2nd_image,imagePoints_3d_t0_2d_1,PointcloudToBeVerified);
+			cv::projectPoints(Mat(_3dPoints4Bund),rvec2,tvec2,Mat_intr,distCoeffs[1],imagePoints_3d_t0_2d_2);
+			RprjErr_2 = ComputeReprErr(markers_from_matlab_next_image,imagePoints_3d_t0_2d_2,PointcloudToBeVerified);ComputeRepro*/
 //  638297225
 //  2570
 
@@ -96,50 +103,53 @@ struct REnder : SfMUpdateListener
 //---------------------------- Using command-line ----------------------------
 int doSSBA = false;
 int main(int argc, char** argv) {
-    //string path_to_images = "dataset\\crazyhorse3";
-    string path_to_images = "dataset\\cactus3";
+    double downscale_factor = 1.0;
+    float outlier_filter = 0.0f;
+    string path_to_images = "dataset\\crazyhorse3";
     if (argc < 2) {
-		cerr << "USAGE: " << argv[0] << " <path_to_images> [use rich features (RICH/OF) = RICH] [use GPU (GPU/CPU) = GPU] [downscale factor = 1.0]" << endl;
+		cerr << "USAGE: " << argv[0] << " <path_to_images> [use rich features (RICH/OF) = RICH] [bundling(ssba/opencv)] [matchfile matches.yml]" << endl;
 		//return 0;
 	} else
         path_to_images = string(argv[1]);
 	
-	double downscale_factor = 1.0;
-	//if(argc >= 5)
-	//	downscale_factor = atof(argv[4]);
-
-	float outlier_filter = 0.0f;
-	if(argc >= 5)
-		outlier_filter = atof(argv[4]);
-
-    cv::Ptr<REnder> render = cv::makePtr<REnder>();
-
     open_imgs_dir(path_to_images.c_str(),images,images_names,downscale_factor);
-	if(images.size() == 0) { 
-		cerr << "can't get image files" << endl;
+    if(images.size() == 0) { 
+        cerr << "can't get image files" << endl;
 		return 1;
-	}
+    }
 
-    cv::Ptr<MultiCameraPnP> distance = cv::makePtr<MultiCameraPnP>(images,images_names,path_to_images);
-	if(argc < 3)
-		distance->use_rich_features = true;
-	else
-		distance->use_rich_features = (stricmp(argv[2], "RICH") == 0);
+    bool doRich = false;
+    if (argc>2)
+		doRich = (stricmp(argv[2], "RICH") == 0);
 
-	if(argc>3)
+    if(argc>3)
 	    doSSBA = (stricmp(argv[3], "ssba") == 0);
 
+    std::string matchfile="matches.yml";
+	if(argc>4)
+		matchfile = argv[4];
+
+	//if(argc >= 5)
+	//	downscale_factor = atof(argv[4]);
+	//if(argc >= 5)
+	//	outlier_filter = atof(argv[4]);
+
+
+    cv::Ptr<MultiCameraPnP> distance = cv::makePtr<MultiCameraPnP>(images,images_names,path_to_images,matchfile);
+	distance->use_rich_features = doRich;
 	distance->use_gpu = false;
 	
+    cv::Ptr<REnder> render = cv::makePtr<REnder>();
 	//cv::Ptr<VisualizerListener> visualizerListener = cv::makePtr<VisualizerListener>(); //with ref-count
 	distance->attach(render);
 	
     //RunVisualizationThread();
     //render->show(distance->getPointCloud(),distance->getPointCloudRGB(),outlier_filter);
 
-    cerr  << " " << path_to_images 
+    cerr  << path_to_images 
         << " rich:" << distance->use_rich_features 
-        << " sbba:" << doSSBA << endl;
+        << " sbba:" << doSSBA 
+        << " " << matchfile << endl;
 
 	distance->RecoverDepthFromImages();
 

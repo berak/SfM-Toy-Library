@@ -41,8 +41,9 @@ public:
 	MultiCameraPnP(
 		const std::vector<cv::Mat>& imgs_, 
 		const std::vector<std::string>& imgs_names_, 
-		const std::string& imgs_path_):
-	MultiCameraDistance(imgs_,imgs_names_,imgs_path_) 
+		const std::string& imgs_path_,
+        const std::string& matchfile_):
+	MultiCameraDistance(imgs_,imgs_names_,imgs_path_,matchfile_) 
 	{
 	}
 

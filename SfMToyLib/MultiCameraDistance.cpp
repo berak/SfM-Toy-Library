@@ -38,7 +38,16 @@ void MultiCameraDistance::setImages(const std::vector<cv::Mat>& imgs_,
 		const std::vector<std::string>& imgs_names_,
 		const std::string& imgs_path_)
 {
-	imgpts.clear();
+
+    ////if ( cam_matrix.at<double>(0,0)== 4256 )
+    //if ( imgs_path_.find_last_of("marker") > 1 )
+    //{
+    //    std::cout << __FUNCTION__ << " using markers!\n" << cam_matrix << std::endl;
+    //	init(imgs_path_);
+    //    return;
+    //}
+    
+    imgpts.clear();
 	fullpts.clear();
 	imgpts_good.clear();
 	matches_matrix.clear();
@@ -81,6 +90,14 @@ void MultiCameraDistance::init(const std::string& imgs_path_) {
 	if (fs.open(imgs_path_ + "\\out_camera_data.yml", cv::FileStorage::READ)) {
 		fs["camera_matrix"] >> cam_matrix;
 		fs["distortion_coefficients"] >> distortion_coeff;
+  //  } else if ( imgs_path_.find_last_of("marker") >0) {
+		////no calibration matrix file - mockup calibration
+  //      int max_w_h = 4256;
+  //      int W = 4256;
+  //      int H = 2056;
+		//cam_matrix = (cv::Mat_<double>(3, 3) << max_w_h, 0, W
+		//		/ 2.0, 0, max_w_h, H / 2.0, 0, 0, 1);
+		//distortion_coeff = cv::Mat_<double>::zeros(1, 4);
 	} else {
 		//no calibration matrix file - mockup calibration
 		cv::Size imgs_size = imgs[0].size();
@@ -102,6 +119,12 @@ void MultiCameraDistance::init(const std::string& imgs_path_) {
 void MultiCameraDistance::OnlyMatchFeatures()
 {
 	if(features_matched) return;
+
+    //if ( cam_matrix.at<double>(0,0)== 4256 )
+    //{
+    //    std::cout << "using markers!\n" << cam_matrix << std::endl;
+    //}
+
 
 	std::cout  <<"Matching features...\n";
 	
@@ -138,11 +161,11 @@ void MultiCameraDistance::OnlyMatchFeatures()
 	//		}
 	//	}
 	//} else {
-    cv::FileStorage fs("matches.yml",cv::FileStorage::READ);
+    cv::FileStorage fs(matchfile,cv::FileStorage::READ);
     bool doRead = fs.isOpened();
     if ( ! doRead )
     {
-        fs = cv::FileStorage("matches.yml",cv::FileStorage::WRITE);
+        fs = cv::FileStorage(matchfile,cv::FileStorage::WRITE);
     }
 #pragma omp parallel for
 		for (frame_num_i = 0; frame_num_i < loop1_top; frame_num_i++) {
