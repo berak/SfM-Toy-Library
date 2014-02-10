@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
     if(argc>3)
 	    doSSBA = (stricmp(argv[3], "ssba") == 0);
 
-    std::string matchfile="matches.yml";
+    std::string matchfile="dataset\matches.yml";
 	if(argc>4)
 		matchfile = argv[4];
 

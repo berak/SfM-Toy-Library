@@ -42,7 +42,7 @@ using namespace std;
 #define V3DLIB_ENABLE_SUITESPARSE
 
 #include "../3rdparty/SSBA-3.0/Math/v3d_linear.h"
-#include "../3rdparty/SSBA-3.0/Base/v3d_vrmlio.h"
+//#include "../3rdparty/SSBA-3.0/Base/v3d_vrmlio.h"
 #include "../3rdparty/SSBA-3.0/Geometry/v3d_metricbundle.h"
 
 using namespace V3D;
@@ -411,7 +411,7 @@ void BundleAdjuster::adjustBundle(vector<CloudPoint>& pointcloud,
             cout << endl;
         }
 
-        cout  << "Adjust bundle... " << imagePoints.size() << endl;
+        cout  << "Adjust bundle... " << imagePoints.size() << " : " << imagePoints[0].size() <<  endl;
 	    cv::LevMarqSparse::bundleAdjust(points,imagePoints,visibility,cameraMatrix,R,T,distCoeffs);
 
         cout << "Post Bundle " << endl;
